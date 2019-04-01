@@ -19,7 +19,6 @@ import mesosphere.marathon.core.health._
 import mesosphere.marathon.core.instance.Instance
 import mesosphere.marathon.state.{AppDefinition, Timestamp}
 import mesosphere.util.ThreadPoolContext
-import mesosphere.marathon.util.toRichFuture
 
 import scala.concurrent.Future
 import scala.concurrent.duration.FiniteDuration
@@ -35,15 +34,15 @@ object HealthCheckWorker extends StrictLogging {
     implicit val ex = mat.executionContext
 
     check(app, instance, healthCheck)
-      .mapAll {
-        case Success(result) => result
+      .transform {
         case Failure(ex) =>
           logger.warn(s"Performing health check for app=${app.id} instance=${instance.instanceId} port=${healthCheck.port} failed with exception", ex)
-          Unhealthy(
+          Success(Unhealthy(
             instance.instanceId,
             instance.runSpecVersion,
             s"${ex.getClass.getSimpleName}: ${ex.getMessage}"
-          )
+          ))
+        case other => other
       }
   }
 
